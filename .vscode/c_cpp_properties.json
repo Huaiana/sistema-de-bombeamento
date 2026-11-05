@@ -1,0 +1,21 @@
+{
+  "configurations": [
+    {
+      "name": "Arduino Uno",
+      "includePath": [
+        "${workspaceFolder}\\**",
+        "${env:LOCALAPPDATA}\\Arduino15\\packages\\arduino\\hardware\\avr\\**\\cores\\arduino",
+        "${env:LOCALAPPDATA}\\Arduino15\\packages\\arduino\\hardware\\avr\\**\\variants\\standard"
+      ],
+      "defines": [
+        "ARDUINO_AVR_UNO",
+        "ARDUINO_ARCH_AVR",
+        "F_CPU=16000000L"
+      ],
+      "intelliSenseMode": "windows-gcc-x86",
+      "cppStandard": "c++11",
+      "cStandard": "c17"
+    }
+  ],
+  "version": 4
+}

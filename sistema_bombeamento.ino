@@ -32,7 +32,7 @@ const int TRIG_TANQUE1 = 2;   // Reservatório de coleta (chuva)
 const int ECHO_TANQUE1 = 3;
 const int TRIG_TANQUE2 = 4;   // Caixa-d'água
 const int ECHO_TANQUE2 = 5;
-const int RELE_BOMBA   = 8;
+const int RELE_BOMBA   = 10;
 
 // Relé acionado em LOW (igual ao seu código original).
 // Se o seu relé for acionado em HIGH, inverta estes dois.

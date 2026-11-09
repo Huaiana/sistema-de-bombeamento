@@ -256,16 +256,19 @@ function Index() {
               </span>
               {conectado ? (
                 <button
+                  type="button"
                   onClick={() => desconectar()}
-                  className="stencil rounded-sm border-2 border-border bg-secondary px-5 py-2.5 text-sm font-bold text-secondary-foreground bezel transition active:translate-y-[3px] active:shadow-none hover:bg-secondary/80"
+                  className="stencil focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-sm border-2 border-border bg-secondary px-5 py-2.5 text-sm font-bold text-secondary-foreground bezel transition active:translate-y-[3px] active:shadow-none hover:bg-secondary/80"
                 >
                   Desconectar
                 </button>
               ) : (
                 <button
+                  type="button"
                   onClick={conectar}
                   disabled={!suportado || conectando}
-                  className="stencil rounded-sm border-2 border-border bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground bezel transition active:translate-y-[3px] active:shadow-none hover:bg-primary/90 disabled:opacity-40"
+                  aria-busy={conectando}
+                  className="stencil focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-sm border-2 border-border bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground bezel transition active:translate-y-[3px] active:shadow-none hover:bg-primary/90 disabled:opacity-40"
                 >
                   {conectando ? "Conectando..." : "Conectar Arduino (USB)"}
                 </button>
@@ -287,15 +290,27 @@ function Index() {
         )}
 
         <section className="plate mt-6 rounded-sm border-2 border-border p-5 bezel">
-          <h2 className="stencil text-base text-foreground">Controle da bomba</h2>
-          <p className="mt-2 text-sm text-muted-foreground">
+          <h2 id="controle-bomba" className="stencil text-base text-foreground">
+            Controle da bomba
+          </h2>
+          <p
+            id="controle-status"
+            role="status"
+            aria-live="polite"
+            className="mt-2 text-sm text-muted-foreground"
+          >
             {!conectado
               ? "Conecte o Arduino para enviar comandos."
               : !protocolo
                 ? "Aguardando resposta do firmware de controle. Carregue a versão atual do programa no Arduino."
                 : `Modo confirmado: ${controle?.modo === "PAUSADO" ? "pausado" : controle ? "automático" : "aguardando estado"}.`}
           </p>
-          <div className="mt-3 flex flex-wrap gap-2">
+          <div
+            role="group"
+            aria-labelledby="controle-bomba"
+            aria-describedby="controle-status"
+            className="mt-3 flex flex-wrap gap-2"
+          >
             {[
               { comando: "LIGAR", label: "Solicitar ligar" },
               { comando: "PARAR", label: "Desligar e pausar" },
@@ -303,9 +318,10 @@ function Index() {
             ].map(({ comando, label }) => (
               <button
                 key={comando}
+                type="button"
                 onClick={() => void enviarComando(comando)}
                 disabled={!conectado || !protocolo || !controle}
-                className="stencil rounded-sm border-2 border-border bg-secondary px-4 py-2 text-sm text-secondary-foreground disabled:opacity-40"
+                className="stencil rounded-sm border-2 border-border bg-secondary px-4 py-2 text-sm text-secondary-foreground hover:bg-secondary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {label}
               </button>
@@ -323,7 +339,7 @@ function Index() {
               onChange={(e) =>
                 void enviarComando(e.target.value === "PARAR" ? "USB_PARAR" : "USB_AUTO")
               }
-              className="rounded-sm border-2 border-border bg-background px-2 py-1 disabled:opacity-40"
+              className="rounded-sm border-2 border-border bg-background px-2 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-40"
             >
               {!controle && <option value="">Aguardando Arduino</option>}
               <option value="AUTOMATICO">Continuar automático</option>

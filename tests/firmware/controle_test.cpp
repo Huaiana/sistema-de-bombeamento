@@ -25,6 +25,7 @@ void comando(const char* texto) {
 }
 
 void leitura() {
+  comando("PING");
   tempoSimulado += INTERVALO_LEITURA;
   loop();
 }
@@ -81,7 +82,10 @@ int main() {
   leitura();
   leitura();
   assert(estadoRele == BOMBA_LIGADA);
-  tempoSimulado += TEMPO_CONEXAO_USB;
+  tempoSimulado = ultimoSinalPainel + TEMPO_CONEXAO_USB - 1;
+  lerComandos();
+  assert(painelConectado && estadoRele == BOMBA_LIGADA);
+  tempoSimulado++;
   lerComandos();
   assert(!painelConectado && controlePausado && estadoRele == BOMBA_DESLIGADA);
 
@@ -95,5 +99,17 @@ int main() {
 
   setup();
   assert(!pararNaDesconexao && !controlePausado);
+  comando("PING");
+  comando("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX");
+  assert(Serial.saida.find("ERRO: COMANDO MUITO LONGO") != std::string::npos);
+  tempoSimulado += TEMPO_DESCANSO;
+  leitura();
+  leitura();
+  leitura();
+  leitura();
+  assert(estadoRele == BOMBA_LIGADA);
+  tempoSimulado += TEMPO_MAX_LIGADA;
+  leitura();
+  assert(estadoRele == BOMBA_DESLIGADA && estado == DESCANSO);
   std::cout << "Firmware control tests passed\n";
 }

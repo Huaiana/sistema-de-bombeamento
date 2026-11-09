@@ -1,9 +1,9 @@
 # Sistema de bombeamento de água da chuva
 
 Este repositório reúne o firmware do Arduino Uno e o painel web criado no
-Lovable. O Arduino continua responsável por ler os sensores e controlar a
-bomba automaticamente; o painel apenas acompanha as leituras pelo cabo USB.
-Não há controle remoto da bomba.
+Lovable. O Arduino é responsável por ler os sensores e controlar a bomba. O
+painel acompanha as leituras e permite solicitar o controle por USB, sem
+ignorar os limites do firmware.
 
 ## Componentes
 
@@ -12,8 +12,8 @@ Não há controle remoto da bomba.
 - `frontend/`: painel web React que recebe os dados pela Web Serial API.
 
 O firmware envia estado, distâncias dos tanques e eventos pela serial a
-9600 baud, no formato que o painel já interpreta. As proteções e os limites
-de operação da bomba permanecem no Arduino.
+9600 baud. O painel também envia comandos e recebe a confirmação de estado.
+As proteções e os limites de operação da bomba permanecem no Arduino.
 
 ## Executar
 
@@ -45,3 +45,6 @@ percentual. Os limites que ligam e desligam a bomba são definidos no firmware
 O volume mostrado no painel é uma estimativa. A capacidade inicial de cada
 reservatório está definida como 150 ml em `frontend/src/lib/arduino-parser.ts`;
 ajuste `CAPACIDADE_ML` à capacidade real do seu sistema.
+
+Para a descrição completa dos comandos, da desconexão, das limitações e do
+protocolo, consulte [a documentação do sistema](./DOCUMENTACAO.md).

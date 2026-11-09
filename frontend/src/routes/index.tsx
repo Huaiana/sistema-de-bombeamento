@@ -331,8 +331,8 @@ function Index() {
             </select>
           </label>
           <p className="mt-2 text-xs text-muted-foreground">
-            O Arduino detecta a perda após 15 segundos sem sinal; a opção fica salva na placa.
-            Abas em segundo plano podem ter a comunicação suspensa pelo navegador.
+            O Arduino detecta a perda após 15 segundos sem sinal; a opção fica salva na placa. Abas
+            em segundo plano podem ter a comunicação suspensa pelo navegador.
           </p>
         </section>
 

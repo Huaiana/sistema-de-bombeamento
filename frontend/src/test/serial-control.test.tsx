@@ -34,11 +34,11 @@ describe("controle serial", () => {
     await waitFor(() => expect(mensagens).toContain("PING\n"));
     expect(screen.getByRole("button", { name: "Desligar e pausar" })).toBeDisabled();
     entrada?.enqueue(
-      new TextEncoder().encode(
-        "PROTOCOLO: 1\r\nCONTROLE: AUTOMATICO | DESCONEXAO: AUTOMATICO\r\n",
-      ),
+      new TextEncoder().encode("PROTOCOLO: 1\r\nCONTROLE: AUTOMATICO | DESCONEXAO: AUTOMATICO\r\n"),
     );
-    await waitFor(() => expect(screen.getByRole("button", { name: "Desligar e pausar" })).toBeEnabled());
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Desligar e pausar" })).toBeEnabled(),
+    );
 
     fireEvent.click(screen.getByRole("button", { name: "Desligar e pausar" }));
     fireEvent.click(screen.getByRole("button", { name: "Solicitar ligar" }));
@@ -46,7 +46,9 @@ describe("controle serial", () => {
     fireEvent.change(screen.getByRole("combobox", { name: "Ao perder conexão:" }), {
       target: { value: "PARAR" },
     });
-    await waitFor(() => expect(mensagens).toEqual(["PING\n", "PARAR\n", "LIGAR\n", "AUTOMATICO\n", "USB_PARAR\n"]));
+    await waitFor(() =>
+      expect(mensagens).toEqual(["PING\n", "PARAR\n", "LIGAR\n", "AUTOMATICO\n", "USB_PARAR\n"]),
+    );
     entrada?.enqueue(new TextEncoder().encode("CONTROLE: PAUSADO | DESCONEXAO: PARAR\r\n"));
     await waitFor(() => expect(screen.getByText("Modo confirmado: pausado.")).toBeInTheDocument());
     fireEvent.click(screen.getByRole("button", { name: "Desconectar" }));

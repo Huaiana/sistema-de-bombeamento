@@ -3,7 +3,7 @@
     {
       "name": "Arduino Uno",
       "includePath": [
-        "${workspaceFolder}\\**",
+        "${workspaceFolder}",
         "${env:LOCALAPPDATA}\\Arduino15\\packages\\arduino\\hardware\\avr\\**\\cores\\arduino",
         "${env:LOCALAPPDATA}\\Arduino15\\packages\\arduino\\hardware\\avr\\**\\variants\\standard",
         "${env:LOCALAPPDATA}\\Arduino15\\packages\\arduino\\hardware\\avr\\**\\libraries\\**",

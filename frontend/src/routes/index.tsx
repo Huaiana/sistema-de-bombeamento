@@ -1,14 +1,27 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { parseLinha, nivelPercent, volumeMl, CAPACIDADE_ML, type Leitura } from "@/lib/arduino-parser";
+import {
+  parseLinha,
+  nivelPercent,
+  volumeMl,
+  CAPACIDADE_ML,
+  type Leitura,
+} from "@/lib/arduino-parser";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "Monitor Água da Chuva — Arduino via USB" },
-      { name: "description", content: "Acompanhe em tempo real os reservatórios e a bomba do Arduino Uno pelo navegador (Web Serial)." },
+      {
+        name: "description",
+        content:
+          "Acompanhe em tempo real os reservatórios e a bomba do Arduino Uno pelo navegador (Web Serial).",
+      },
       { property: "og:title", content: "Monitor Água da Chuva — Arduino via USB" },
-      { property: "og:description", content: "Leituras ao vivo dos sensores HC-SR04 e da bomba pelo cabo USB." },
+      {
+        property: "og:description",
+        content: "Leituras ao vivo dos sensores HC-SR04 e da bomba pelo cabo USB.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -46,7 +59,9 @@ function Index() {
     try {
       const c = localStorage.getItem(CALIB_KEY);
       if (c) setCalib({ ...CALIB_PADRAO, ...JSON.parse(c) });
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }, []);
   const salvarCalib = (c: Calib) => {
     setCalib(c);
@@ -102,8 +117,16 @@ function Index() {
   }
 
   async function desconectar(silencioso = false) {
-    try { await readerRef.current?.cancel(); } catch { /* ignore */ }
-    try { await portRef.current?.close(); } catch { /* ignore */ }
+    try {
+      await readerRef.current?.cancel();
+    } catch {
+      /* ignore */
+    }
+    try {
+      await portRef.current?.close();
+    } catch {
+      /* ignore */
+    }
     readerRef.current = null;
     if (portRef.current && !silencioso) addLog("Desconectado");
     portRef.current = null;
@@ -136,16 +159,27 @@ function Index() {
               </p>
             </div>
             <div className="flex flex-col items-end gap-3">
-              <span className={`flex items-center gap-2 rounded-sm border border-border bg-oil px-3 py-1 font-mono text-xs uppercase tracking-wider text-oil-foreground inset-stamp ${conectado ? "text-primary" : ""}`}>
-                <span className={`lamp h-2.5 w-2.5 rounded-full ${conectado ? "animate-pulse bg-primary text-primary" : "bg-muted-foreground text-muted-foreground"}`} />
+              <span
+                className={`flex items-center gap-2 rounded-sm border border-border bg-oil px-3 py-1 font-mono text-xs uppercase tracking-wider text-oil-foreground inset-stamp ${conectado ? "text-primary" : ""}`}
+              >
+                <span
+                  className={`lamp h-2.5 w-2.5 rounded-full ${conectado ? "animate-pulse bg-primary text-primary" : "bg-muted-foreground text-muted-foreground"}`}
+                />
                 {conectado ? "USB conectado" : "Desconectado"}
               </span>
               {conectado ? (
-                <button onClick={() => desconectar()} className="stencil rounded-sm border-2 border-border bg-secondary px-5 py-2.5 text-sm font-bold text-secondary-foreground bezel transition active:translate-y-[3px] active:shadow-none hover:bg-secondary/80">
+                <button
+                  onClick={() => desconectar()}
+                  className="stencil rounded-sm border-2 border-border bg-secondary px-5 py-2.5 text-sm font-bold text-secondary-foreground bezel transition active:translate-y-[3px] active:shadow-none hover:bg-secondary/80"
+                >
                   Desconectar
                 </button>
               ) : (
-                <button onClick={conectar} disabled={!suportado} className="stencil rounded-sm border-2 border-border bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground bezel transition active:translate-y-[3px] active:shadow-none hover:bg-primary/90 disabled:opacity-40">
+                <button
+                  onClick={conectar}
+                  disabled={!suportado}
+                  className="stencil rounded-sm border-2 border-border bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground bezel transition active:translate-y-[3px] active:shadow-none hover:bg-primary/90 disabled:opacity-40"
+                >
                   Conectar Arduino (USB)
                 </button>
               )}
@@ -155,7 +189,8 @@ function Index() {
 
         {!suportado && (
           <div className="mt-6 rounded-sm border-2 border-destructive bg-hazard/25 p-4 text-sm font-semibold text-foreground">
-            Este navegador não suporta Web Serial. Use Google Chrome ou Microsoft Edge no computador.
+            Este navegador não suporta Web Serial. Use Google Chrome ou Microsoft Edge no
+            computador.
           </div>
         )}
         {erro && (
@@ -165,13 +200,35 @@ function Index() {
         )}
 
         <section className="mt-8 grid gap-6 md:grid-cols-[1fr_auto_1fr]">
-          <Tanque nome="Reservatório de coleta" sub="Tanque 1 · chuva" dist={atual?.coleta} pct={p1}
-            marcas={[{ label: `liga ${T1L.ligar}cm`, pct: nivelPercent(T1L.ligar, T1.cheio, T1.vazio)! }, { label: `para ${T1L.desligar}cm`, pct: nivelPercent(T1L.desligar, T1.cheio, T1.vazio)! }]} />
+          <Tanque
+            nome="Reservatório de coleta"
+            sub="Tanque 1 · chuva"
+            dist={atual?.coleta}
+            pct={p1}
+            marcas={[
+              { label: `liga ${T1L.ligar}cm`, pct: nivelPercent(T1L.ligar, T1.cheio, T1.vazio)! },
+              {
+                label: `para ${T1L.desligar}cm`,
+                pct: nivelPercent(T1L.desligar, T1.cheio, T1.vazio)!,
+              },
+            ]}
+          />
 
           <Bomba bombeando={bombeando} estado={atual?.estado ?? null} ciclos={ciclos} />
 
-          <Tanque nome="Caixa-d'água" sub="Tanque 2" dist={atual?.caixa} pct={p2}
-            marcas={[{ label: `cheia ${T2L.cheio}cm`, pct: nivelPercent(T2L.cheio, T2.cheio, T2.vazio)! }, { label: `libera ${T2L.libera}cm`, pct: nivelPercent(T2L.libera, T2.cheio, T2.vazio)! }]} />
+          <Tanque
+            nome="Caixa-d'água"
+            sub="Tanque 2"
+            dist={atual?.caixa}
+            pct={p2}
+            marcas={[
+              { label: `cheia ${T2L.cheio}cm`, pct: nivelPercent(T2L.cheio, T2.cheio, T2.vazio)! },
+              {
+                label: `libera ${T2L.libera}cm`,
+                pct: nivelPercent(T2L.libera, T2.cheio, T2.vazio)!,
+              },
+            ]}
+          />
         </section>
 
         <section className="mt-6 grid gap-6 lg:grid-cols-2">
@@ -182,8 +239,12 @@ function Index() {
             </p>
             <Grafico hist={hist} />
             <div className="mt-3 flex gap-2 font-mono text-xs">
-              <span className="rounded-sm border border-border bg-oil px-2 py-0.5 text-chart-1">■ Coleta</span>
-              <span className="rounded-sm border border-border bg-oil px-2 py-0.5 text-chart-2">■ Caixa</span>
+              <span className="rounded-sm border border-border bg-oil px-2 py-0.5 text-chart-1">
+                ■ Coleta
+              </span>
+              <span className="rounded-sm border border-border bg-oil px-2 py-0.5 text-chart-2">
+                ■ Caixa
+              </span>
             </div>
           </div>
 
@@ -191,12 +252,18 @@ function Index() {
 
           <div className="rounded-sm border-2 border-dashed border-border bg-secondary/60 p-5 lg:col-span-2">
             <h2 className="stencil text-base text-foreground">Registro de eventos</h2>
-            <p className="font-mono text-xs text-muted-foreground">Folha da bancada — mais recente em cima</p>
+            <p className="font-mono text-xs text-muted-foreground">
+              Folha da bancada — mais recente em cima
+            </p>
             <div className="mt-3 h-64 overflow-auto rounded-sm border border-border bg-background/70 p-3 font-mono text-xs leading-relaxed text-foreground/90">
               {log.length === 0 ? (
                 <p className="text-muted-foreground">Conecte o Arduino para ver as mensagens…</p>
               ) : (
-                log.map((l, i) => <div key={i} className="border-b border-dashed border-border/60 py-0.5">{l}</div>)
+                log.map((l, i) => (
+                  <div key={i} className="border-b border-dashed border-border/60 py-0.5">
+                    {l}
+                  </div>
+                ))
               )}
             </div>
           </div>
@@ -204,14 +271,28 @@ function Index() {
 
         <footer className="mt-8 flex flex-wrap items-center justify-between gap-3 rounded-sm border-2 border-border p-4 wood">
           <p className="stencil text-xs text-oil-foreground">Bancada de testes · água da chuva</p>
-          <p className="font-mono text-xs text-oil-foreground/80">9600 baud · 150 ml por reservatório</p>
+          <p className="font-mono text-xs text-oil-foreground/80">
+            9600 baud · 150 ml por reservatório
+          </p>
         </footer>
       </div>
     </main>
   );
 }
 
-function Tanque({ nome, sub, dist, pct, marcas }: { nome: string; sub: string; dist: number | null | undefined; pct: number | null; marcas: { label: string; pct: number }[] }) {
+function Tanque({
+  nome,
+  sub,
+  dist,
+  pct,
+  marcas,
+}: {
+  nome: string;
+  sub: string;
+  dist: number | null | undefined;
+  pct: number | null;
+  marcas: { label: string; pct: number }[];
+}) {
   const erro = dist === null;
   return (
     <div className="plate rivets grunge rounded-sm border-2 border-border p-5 bezel">
@@ -225,25 +306,47 @@ function Tanque({ nome, sub, dist, pct, marcas }: { nome: string; sub: string; d
         </p>
       </div>
       <p className="mt-2 font-mono text-2xl font-semibold">
-        {volumeMl(erro ? null : pct) ?? "—"} ml <span className="text-base text-muted-foreground">/ {CAPACIDADE_ML} ml</span>
+        {volumeMl(erro ? null : pct) ?? "—"} ml{" "}
+        <span className="text-base text-muted-foreground">/ {CAPACIDADE_ML} ml</span>
       </p>
 
       {/* visor de nível: tubo de vidro com conexões de latão */}
       <div className="mt-4 h-3 rounded-sm border-y-2 border-border bg-brass/70" />
       <div className="graduacao relative h-56 overflow-hidden border-x-2 border-border bg-muted inset-stamp">
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-primary via-primary to-accent transition-all duration-500" style={{ height: `${pct ?? 0}%` }}>
+        <div
+          className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-primary via-primary to-accent transition-all duration-500"
+          style={{ height: `${pct ?? 0}%` }}
+        >
           <div className="absolute inset-x-0 top-0 h-1 bg-accent-foreground/25" />
         </div>
         {/* reflexo do vidro */}
-        <div aria-hidden className="absolute inset-y-0 left-3 w-5 bg-gradient-to-r from-card/45 to-transparent" />
-        <div aria-hidden className="absolute inset-y-0 right-6 w-2 bg-gradient-to-l from-card/25 to-transparent" />
+        <div
+          aria-hidden
+          className="absolute inset-y-0 left-3 w-5 bg-gradient-to-r from-card/45 to-transparent"
+        />
+        <div
+          aria-hidden
+          className="absolute inset-y-0 right-6 w-2 bg-gradient-to-l from-card/25 to-transparent"
+        />
         {marcas.map((m) => (
-          <div key={m.label} className="absolute inset-x-0 border-t border-dashed border-foreground/50" style={{ bottom: `${m.pct}%` }}>
-            <span className="stencil absolute right-1 -top-4 rounded-sm bg-foreground/85 px-1 py-px text-[9px] text-background">{m.label}</span>
+          <div
+            key={m.label}
+            className="absolute inset-x-0 border-t border-dashed border-foreground/50"
+            style={{ bottom: `${m.pct}%` }}
+          >
+            <span className="stencil absolute right-1 -top-4 rounded-sm bg-foreground/85 px-1 py-px text-[9px] text-background">
+              {m.label}
+            </span>
           </div>
         ))}
         <div className="absolute inset-0 flex items-center justify-center font-mono text-3xl font-bold text-foreground">
-          {erro ? <span className="stencil text-base text-destructive">Erro sensor</span> : pct == null ? "" : `${Math.round(pct)}%`}
+          {erro ? (
+            <span className="stencil text-base text-destructive">Erro sensor</span>
+          ) : pct == null ? (
+            ""
+          ) : (
+            `${Math.round(pct)}%`
+          )}
         </div>
       </div>
       <div className="h-3 rounded-sm border-y-2 border-border bg-brass/70" />
@@ -251,37 +354,89 @@ function Tanque({ nome, sub, dist, pct, marcas }: { nome: string; sub: string; d
   );
 }
 
-function Bomba({ bombeando, estado, ciclos }: { bombeando: boolean; estado: string | null; ciclos: number }) {
+function Bomba({
+  bombeando,
+  estado,
+  ciclos,
+}: {
+  bombeando: boolean;
+  estado: string | null;
+  ciclos: number;
+}) {
   const digitos = String(ciclos).padStart(3, "0").split("");
   return (
     <div className="gauge-face rivets flex flex-col items-center justify-center gap-3 rounded-sm border-2 border-border px-6 py-6 bezel">
       <p className="stencil text-xs text-oil-foreground/70">Bomba</p>
-      <div className={`flex h-24 w-24 items-center justify-center rounded-full border-4 ${bombeando ? "border-primary" : "border-oil-foreground/25"}`}>
-        <svg viewBox="0 0 24 24" className={`h-12 w-12 ${bombeando ? "animate-spin text-primary" : "text-oil-foreground/45"}`} style={{ animationDuration: "1.2s" }} fill="none" stroke="currentColor" strokeWidth="2">
-          <circle cx="12" cy="12" r="3" /><path d="M12 2v5M12 17v5M2 12h5M17 12h5" />
+      <div
+        className={`flex h-24 w-24 items-center justify-center rounded-full border-4 ${bombeando ? "border-primary" : "border-oil-foreground/25"}`}
+      >
+        <svg
+          viewBox="0 0 24 24"
+          className={`h-12 w-12 ${bombeando ? "animate-spin text-primary" : "text-oil-foreground/45"}`}
+          style={{ animationDuration: "1.2s" }}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+        >
+          <circle cx="12" cy="12" r="3" />
+          <path d="M12 2v5M12 17v5M2 12h5M17 12h5" />
         </svg>
       </div>
       <p className="stencil text-lg text-oil-foreground">{estado ?? "—"}</p>
       <div className="flex gap-1" aria-label={`${ciclos} ciclos nesta sessão`}>
         {digitos.map((d, i) => (
-          <span key={i} className="w-7 rounded-sm border border-oil-foreground/25 bg-oil-foreground/10 py-0.5 text-center font-mono text-lg text-oil-foreground inset-stamp">{d}</span>
+          <span
+            key={i}
+            className="w-7 rounded-sm border border-oil-foreground/25 bg-oil-foreground/10 py-0.5 text-center font-mono text-lg text-oil-foreground inset-stamp"
+          >
+            {d}
+          </span>
         ))}
       </div>
-      <p className="font-mono text-[10px] uppercase tracking-wider text-oil-foreground/85">ciclos nesta sessão</p>
+      <p className="font-mono text-[10px] uppercase tracking-wider text-oil-foreground/85">
+        ciclos nesta sessão
+      </p>
     </div>
   );
 }
 
 function Grafico({ hist }: { hist: Leitura[] }) {
-  const W = 500, H = 180, max = 40;
+  const W = 500,
+    H = 180,
+    max = 40;
   const linha = (k: "coleta" | "caixa") =>
-    hist.map((h, i) => (h[k] == null ? null : `${(i / Math.max(1, hist.length - 1)) * W},${(Math.min(h[k]!, max) / max) * H}`)).filter(Boolean).join(" ");
+    hist
+      .map((h, i) =>
+        h[k] == null
+          ? null
+          : `${(i / Math.max(1, hist.length - 1)) * W},${(Math.min(h[k]!, max) / max) * H}`,
+      )
+      .filter(Boolean)
+      .join(" ");
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="mt-3 h-48 w-full rounded-sm border border-border bg-oil gauge-face">
+    <svg
+      viewBox={`0 0 ${W} ${H}`}
+      className="mt-3 h-48 w-full rounded-sm border border-border bg-oil gauge-face"
+    >
       {[10, 20, 30].map((v) => (
         <g key={v}>
-          <line x1="0" x2={W} y1={(v / max) * H} y2={(v / max) * H} className="stroke-oil-foreground/40" strokeDasharray="4 4" />
-          <text x="4" y={(v / max) * H - 2} className="fill-oil-foreground/90" fontSize="11" fontFamily="IBM Plex Mono, monospace">{v}cm</text>
+          <line
+            x1="0"
+            x2={W}
+            y1={(v / max) * H}
+            y2={(v / max) * H}
+            className="stroke-oil-foreground/40"
+            strokeDasharray="4 4"
+          />
+          <text
+            x="4"
+            y={(v / max) * H - 2}
+            className="fill-oil-foreground/90"
+            fontSize="11"
+            fontFamily="IBM Plex Mono, monospace"
+          >
+            {v}cm
+          </text>
         </g>
       ))}
       <polyline points={linha("coleta")} fill="none" className="stroke-chart-1" strokeWidth="2" />
@@ -294,9 +449,17 @@ function Calibracao({ calib, onChange }: { calib: Calib; onChange: (c: Calib) =>
   const campo = (k: keyof Calib, label: string) => (
     <label className="flex flex-col gap-1 font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
       {label}
-      <input type="number" step="0.5" min="0" value={calib[k]}
-        onChange={(e) => { const v = parseFloat(e.target.value); if (Number.isFinite(v)) onChange({ ...calib, [k]: v }); }}
-        className="rounded-sm border-2 border-border bg-background px-3 py-2 font-mono text-sm text-foreground inset-stamp focus:outline-none focus:ring-2 focus:ring-ring" />
+      <input
+        type="number"
+        step="0.5"
+        min="0"
+        value={calib[k]}
+        onChange={(e) => {
+          const v = parseFloat(e.target.value);
+          if (Number.isFinite(v)) onChange({ ...calib, [k]: v });
+        }}
+        className="rounded-sm border-2 border-border bg-background px-3 py-2 font-mono text-sm text-foreground inset-stamp focus:outline-none focus:ring-2 focus:ring-ring"
+      />
     </label>
   );
   const invalido = calib.t1Vazio <= calib.t1Cheio || calib.t2Vazio <= calib.t2Cheio;
@@ -304,7 +467,10 @@ function Calibracao({ calib, onChange }: { calib: Calib; onChange: (c: Calib) =>
     <div className="plate rivets grunge rounded-sm border-2 border-border p-5 bezel">
       <div className="flex items-baseline justify-between">
         <h2 className="stencil text-base text-foreground stamp">Calibração</h2>
-        <button onClick={() => onChange(CALIB_PADRAO)} className="stencil rounded-sm border border-border bg-secondary px-2 py-1 text-[11px] text-secondary-foreground transition hover:bg-secondary/70 active:translate-y-px">
+        <button
+          onClick={() => onChange(CALIB_PADRAO)}
+          className="stencil rounded-sm border border-border bg-secondary px-2 py-1 text-[11px] text-secondary-foreground transition hover:bg-secondary/70 active:translate-y-px"
+        >
           Restaurar padrão
         </button>
       </div>
@@ -312,11 +478,23 @@ function Calibracao({ calib, onChange }: { calib: Calib; onChange: (c: Calib) =>
         Distância do sensor até a água (cm), medida na bancada. Capacidade: {CAPACIDADE_ML} ml cada.
       </p>
       <p className="stencil mt-4 text-xs text-accent-foreground">Reservatório de coleta</p>
-      <div className="mt-2 grid grid-cols-2 gap-3">{campo("t1Cheio", "Cheio (cm)")}{campo("t1Vazio", "Vazio (cm)")}</div>
+      <div className="mt-2 grid grid-cols-2 gap-3">
+        {campo("t1Cheio", "Cheio (cm)")}
+        {campo("t1Vazio", "Vazio (cm)")}
+      </div>
       <p className="stencil mt-4 text-xs text-accent-foreground">Caixa-d'água</p>
-      <div className="mt-2 grid grid-cols-2 gap-3">{campo("t2Cheio", "Cheio (cm)")}{campo("t2Vazio", "Vazio (cm)")}</div>
-      {invalido && <p className="mt-3 font-mono text-xs text-destructive">A distância "vazio" deve ser maior que "cheio".</p>}
-      <p className="mt-3 font-mono text-[11px] text-muted-foreground">Ajustes ficam salvos neste navegador.</p>
+      <div className="mt-2 grid grid-cols-2 gap-3">
+        {campo("t2Cheio", "Cheio (cm)")}
+        {campo("t2Vazio", "Vazio (cm)")}
+      </div>
+      {invalido && (
+        <p className="mt-3 font-mono text-xs text-destructive">
+          A distância "vazio" deve ser maior que "cheio".
+        </p>
+      )}
+      <p className="mt-3 font-mono text-[11px] text-muted-foreground">
+        Ajustes ficam salvos neste navegador.
+      </p>
     </div>
   );
 }

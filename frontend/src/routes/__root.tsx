@@ -82,7 +82,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "description", content: "Monitor de aproveitamento de água da chuva via Arduino" },
       { name: "author", content: "Lovable" },
       { property: "og:title", content: "Monitor Água da Chuva" },
-      { property: "og:description", content: "Monitor de aproveitamento de água da chuva via Arduino" },
+      {
+        property: "og:description",
+        content: "Monitor de aproveitamento de água da chuva via Arduino",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:site", content: "@Lovable" },
@@ -93,7 +96,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         href: appCss,
       },
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
-      { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600;700&family=Oswald:wght@500;600;700&family=Special+Elite&display=swap" },
+      {
+        rel: "stylesheet",
+        href: "https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600;700&family=Oswald:wght@500;600;700&family=Special+Elite&display=swap",
+      },
     ],
   }),
   shellComponent: RootShell,

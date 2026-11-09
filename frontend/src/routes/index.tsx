@@ -40,11 +40,22 @@ const CALIB_KEY = "calibracao-tanques";
 type SerialPortLike = {
   open: (o: { baudRate: number }) => Promise<void>;
   close: () => Promise<void>;
+  getInfo?: () => { usbVendorId?: number; usbProductId?: number };
   readable: ReadableStream<Uint8Array> | null;
   writable: WritableStream<Uint8Array> | null;
 };
 
+const NOVA_PORTA = "nova";
+
+function rotuloPorta(p: SerialPortLike, i: number) {
+  const { usbVendorId: v, usbProductId: d } = p.getInfo?.() ?? {};
+  const id = v != null && d != null ? ` (${v.toString(16)}:${d.toString(16)})` : "";
+  return `Porta USB ${i + 1}${id}`;
+}
+
 function Index() {
+  const [portas, setPortas] = useState<SerialPortLike[]>([]);
+  const [portaSel, setPortaSel] = useState(NOVA_PORTA);
   const [suportado, setSuportado] = useState(true);
   const [conectado, setConectado] = useState(false);
   const [atual, setAtual] = useState<Leitura | null>(null);
@@ -63,6 +74,28 @@ function Index() {
   const encerrandoRef = useRef(false);
 
   const [calib, setCalib] = useState<Calib>(CALIB_PADRAO);
+  const atualizarPortas = async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const serial = (navigator as any).serial;
+    if (!serial?.getPorts) return;
+    try {
+      setPortas(await serial.getPorts());
+    } catch (e) {
+      console.error("Erro ao listar portas USB:", e);
+    }
+  };
+  useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const serial = (navigator as any).serial;
+    if (!serial) return;
+    void atualizarPortas();
+    serial.addEventListener?.("connect", atualizarPortas);
+    serial.addEventListener?.("disconnect", atualizarPortas);
+    return () => {
+      serial.removeEventListener?.("connect", atualizarPortas);
+      serial.removeEventListener?.("disconnect", atualizarPortas);
+    };
+  }, []);
   useEffect(() => {
     setSuportado("serial" in navigator);
     try {
@@ -119,11 +152,13 @@ function Index() {
     let writer: WritableStreamDefaultWriter<Uint8Array> | null = null;
     let heartbeat: ReturnType<typeof setInterval> | null = null;
     try {
+      const escolhida = portaSel === NOVA_PORTA ? undefined : portas[Number(portaSel)];
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      port = await (navigator as any).serial.requestPort();
+      port = escolhida ?? (await (navigator as any).serial.requestPort());
       if (!port) throw new Error("Nenhuma porta serial selecionada.");
       await port.open({ baudRate: 9600 });
       portRef.current = port;
+      void atualizarPortas();
       if (!port.readable || !port.writable) throw new Error("Porta serial sem leitura ou escrita.");
       reader = port.readable.getReader();
       writer = port.writable.getWriter();
@@ -263,15 +298,33 @@ function Index() {
                   Desconectar
                 </button>
               ) : (
-                <button
-                  type="button"
-                  onClick={conectar}
-                  disabled={!suportado || conectando}
-                  aria-busy={conectando}
-                  className="stencil focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-sm border-2 border-border bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground bezel transition active:translate-y-[3px] active:shadow-none hover:bg-primary/90 disabled:opacity-40"
-                >
-                  {conectando ? "Conectando..." : "Conectar Arduino (USB)"}
-                </button>
+                <div className="flex flex-col items-end gap-2">
+                  <label className="flex items-center gap-2 text-xs">
+                    Porta USB:
+                    <select
+                      value={portaSel}
+                      onChange={(e) => setPortaSel(e.target.value)}
+                      disabled={!suportado || conectando}
+                      className="rounded-sm border-2 border-border bg-background px-2 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-40"
+                    >
+                      {portas.map((p, i) => (
+                        <option key={i} value={String(i)}>
+                          {rotuloPorta(p, i)}
+                        </option>
+                      ))}
+                      <option value={NOVA_PORTA}>Escolher outra porta…</option>
+                    </select>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={conectar}
+                    disabled={!suportado || conectando}
+                    aria-busy={conectando}
+                    className="stencil focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-sm border-2 border-border bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground bezel transition active:translate-y-[3px] active:shadow-none hover:bg-primary/90 disabled:opacity-40"
+                  >
+                    {conectando ? "Conectando..." : "Conectar Arduino (USB)"}
+                  </button>
+                </div>
               )}
             </div>
           </div>

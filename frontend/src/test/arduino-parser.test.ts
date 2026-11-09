@@ -19,6 +19,18 @@ describe("parseLinha", () => {
       motivo: "caixa cheia",
     });
   });
+  it("reconhece o protocolo e o estado de controle informado pelo Arduino", () => {
+    expect(parseLinha("PROTOCOLO: 1")).toEqual({ tipo: "protocolo" });
+    expect(parseLinha("CONTROLE: PAUSADO | DESCONEXAO: PARAR")).toEqual({
+      tipo: "controle",
+      controle: { modo: "PAUSADO", desconexao: "PARAR" },
+    });
+    expect(parseLinha("CONTROLE: AUTOMATICO | DESCONEXAO: AUTOMATICO")).toEqual({
+      tipo: "controle",
+      controle: { modo: "AUTOMATICO", desconexao: "AUTOMATICO" },
+    });
+    expect(parseLinha("CONTROLE: INVALIDO | DESCONEXAO: PARAR").tipo).toBe("texto");
+  });
   it("menor distância = mais água", () => {
     expect(nivelPercent(5, 5, 25)).toBe(100);
     expect(nivelPercent(25, 5, 25)).toBe(0);

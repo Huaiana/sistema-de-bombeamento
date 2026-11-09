@@ -7,8 +7,15 @@ export type Leitura = {
   t: number;
 };
 
+export type Controle = {
+  modo: "AUTOMATICO" | "PAUSADO";
+  desconexao: "AUTOMATICO" | "PARAR";
+};
+
 export type Evento =
   | { tipo: "leitura"; leitura: Leitura }
+  | { tipo: "protocolo" }
+  | { tipo: "controle"; controle: Controle }
   | { tipo: "ligou" }
   | { tipo: "desligou"; motivo: string }
   | { tipo: "texto"; texto: string };
@@ -24,6 +31,17 @@ function cm(v: string): number | null {
 
 export function parseLinha(linha: string, t = Date.now()): Evento {
   const l = linha.trim();
+  if (l === "PROTOCOLO: 1") return { tipo: "protocolo" };
+  const controle = l.match(/^CONTROLE: (AUTOMATICO|PAUSADO) \| DESCONEXAO: (AUTOMATICO|PARAR)$/);
+  if (controle) {
+    return {
+      tipo: "controle",
+      controle: {
+        modo: controle[1] === "PAUSADO" ? "PAUSADO" : "AUTOMATICO",
+        desconexao: controle[2] === "PARAR" ? "PARAR" : "AUTOMATICO",
+      },
+    };
+  }
   const m = l.match(RE_LEITURA);
   if (m) {
     return {

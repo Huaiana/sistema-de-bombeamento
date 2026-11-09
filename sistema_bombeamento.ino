@@ -1,4 +1,6 @@
 #include <Arduino.h>
+#include <EEPROM.h>
+#include <string.h>
 
 // ======================================================
 // SISTEMA DE APROVEITAMENTO DE ÁGUA DA CHUVA - ARDUINO UNO
@@ -59,6 +61,10 @@ const unsigned long TEMPO_DESCANSO   = 10000;  // 10 s parada após desligar
 const unsigned long INTERVALO_LEITURA = 300;   // intervalo entre leituras
 
 const int CONFIRMACOES = 3;  // leituras seguidas para confirmar
+const unsigned long TEMPO_CONEXAO_USB = 15000;
+const byte EEPROM_MARCA = 0xA7;
+const int EEPROM_ENDERECO_MARCA = 0;
+const int EEPROM_ENDERECO_POLITICA = 1;
 
 // ======================================================
 // MÁQUINA DE ESTADOS
@@ -70,6 +76,13 @@ unsigned long inicioEstado = 0;
 unsigned long ultimaLeitura = 0;
 int contadorLigar = 0;
 int contadorDesligar = 0;
+bool controlePausado = false;
+bool pararNaDesconexao = false;
+bool painelConectado = false;
+unsigned long ultimoSinalPainel = 0;
+char comandoSerial[24];
+byte tamanhoComando = 0;
+bool comandoExcedeuLimite = false;
 
 
 // ======================================================
@@ -138,6 +151,106 @@ void desligarBomba(const char* motivo)
   Serial.println(motivo);
 }
 
+void enviarControle()
+{
+  Serial.print(F("CONTROLE: "));
+  Serial.print(controlePausado ? F("PAUSADO") : F("AUTOMATICO"));
+  Serial.print(F(" | DESCONEXAO: "));
+  Serial.println(pararNaDesconexao ? F("PARAR") : F("AUTOMATICO"));
+}
+
+void pausarControle(const char* motivo)
+{
+  controlePausado = true;
+  contadorLigar = 0;
+  if (estado == BOMBEANDO) desligarBomba(motivo);
+}
+
+void processarComando(const char* comando)
+{
+  if (strcmp(comando, "PING") == 0)
+  {
+    painelConectado = true;
+    ultimoSinalPainel = millis();
+    Serial.println(F("PROTOCOLO: 1"));
+    enviarControle();
+    return;
+  }
+
+  if (!painelConectado)
+  {
+    Serial.println(F("ERRO: PAINEL NAO CONECTADO"));
+    return;
+  }
+
+  if (strcmp(comando, "PARAR") == 0)
+  {
+    pausarControle("COMANDO DO PAINEL");
+    Serial.println(F("COMANDO: PARAR ACEITO"));
+  }
+  else if (strcmp(comando, "LIGAR") == 0 || strcmp(comando, "AUTOMATICO") == 0)
+  {
+    controlePausado = false;
+    contadorLigar = 0;
+    Serial.println(F("COMANDO: AUTOMATICO ATIVO; PARTIDA SUJEITA AOS SENSORES E DESCANSO"));
+  }
+  else if (strcmp(comando, "USB_AUTO") == 0 || strcmp(comando, "USB_PARAR") == 0)
+  {
+    pararNaDesconexao = strcmp(comando, "USB_PARAR") == 0;
+    EEPROM.update(EEPROM_ENDERECO_POLITICA, pararNaDesconexao ? 1 : 0);
+    EEPROM.update(EEPROM_ENDERECO_MARCA, EEPROM_MARCA);
+    Serial.println(F("COMANDO: POLITICA DE DESCONEXAO ATUALIZADA"));
+  }
+  else
+  {
+    Serial.println(F("ERRO: COMANDO DESCONHECIDO"));
+  }
+  enviarControle();
+}
+
+void lerComandos()
+{
+  if (painelConectado && millis() - ultimoSinalPainel >= TEMPO_CONEXAO_USB)
+  {
+    painelConectado = false;
+    if (pararNaDesconexao)
+      pausarControle("CONEXAO USB PERDIDA");
+    else
+    {
+      controlePausado = false;
+      contadorLigar = 0;
+    }
+    Serial.println(F("PAINEL DESCONECTADO"));
+    enviarControle();
+  }
+
+  while (Serial.available() > 0)
+  {
+    char c = (char)Serial.read();
+    if (c == '\r') continue;
+    if (c == '\n')
+    {
+      if (comandoExcedeuLimite)
+        Serial.println(F("ERRO: COMANDO MUITO LONGO"));
+      else if (tamanhoComando > 0)
+      {
+        comandoSerial[tamanhoComando] = '\0';
+        processarComando(comandoSerial);
+      }
+      tamanhoComando = 0;
+      comandoExcedeuLimite = false;
+    }
+    else if (!comandoExcedeuLimite)
+    {
+      if (tamanhoComando < sizeof(comandoSerial) - 1)
+        comandoSerial[tamanhoComando++] = c;
+      else
+        comandoExcedeuLimite = true;
+    }
+  }
+
+}
+
 
 // ======================================================
 // CONFIGURAÇÃO
@@ -159,6 +272,10 @@ void setup()
   Serial.println("SISTEMA DE BOMBEAMENTO - INICIADO");
   Serial.println("=================================");
 
+  pararNaDesconexao = EEPROM.read(EEPROM_ENDERECO_MARCA) == EEPROM_MARCA &&
+                      EEPROM.read(EEPROM_ENDERECO_POLITICA) == 1;
+  controlePausado = pararNaDesconexao;
+
   // Começa em descanso para os sensores estabilizarem
   estado = DESCANSO;
   inicioEstado = millis();
@@ -170,6 +287,7 @@ void setup()
 // ======================================================
 void loop()
 {
+  lerComandos();
   if (millis() - ultimaLeitura < INTERVALO_LEITURA) return;
   ultimaLeitura = millis();
 
@@ -188,7 +306,7 @@ void loop()
       // Só liga se o reservatório de coleta estiver CHEIO
       // e a caixa-d'água tiver espaço de verdade.
       // Com sensor falhando, não liga.
-      if (d1ok && d2ok &&
+      if (!controlePausado && d1ok && d2ok &&
           d1 <= T1_NIVEL_LIGAR &&
           d2 >= T2_NIVEL_LIBERA)
       {

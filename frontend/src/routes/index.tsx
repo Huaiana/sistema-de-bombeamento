@@ -5,6 +5,7 @@ import {
   nivelPercent,
   volumeMl,
   CAPACIDADE_ML,
+  type Controle,
   type Leitura,
 } from "@/lib/arduino-parser";
 
@@ -40,6 +41,7 @@ type SerialPortLike = {
   open: (o: { baudRate: number }) => Promise<void>;
   close: () => Promise<void>;
   readable: ReadableStream<Uint8Array> | null;
+  writable: WritableStream<Uint8Array> | null;
 };
 
 function Index() {
@@ -50,8 +52,15 @@ function Index() {
   const [log, setLog] = useState<string[]>([]);
   const [ciclos, setCiclos] = useState(0);
   const [erro, setErro] = useState<string | null>(null);
+  const [conectando, setConectando] = useState(false);
+  const [protocolo, setProtocolo] = useState(false);
+  const [controle, setControle] = useState<Controle | null>(null);
   const portRef = useRef<SerialPortLike | null>(null);
-  const readerRef = useRef<ReadableStreamDefaultReader<string> | null>(null);
+  const readerRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null);
+  const writerRef = useRef<WritableStreamDefaultWriter<Uint8Array> | null>(null);
+  const ultimoProtocoloRef = useRef(0);
+  const ultimaLeituraRef = useRef(0);
+  const encerrandoRef = useRef(false);
 
   const [calib, setCalib] = useState<Calib>(CALIB_PADRAO);
   useEffect(() => {
@@ -63,6 +72,13 @@ function Index() {
       /* ignore */
     }
   }, []);
+  useEffect(
+    () => () => {
+      encerrandoRef.current = true;
+      readerRef.current?.cancel().catch((e) => console.error("Erro ao liberar a porta USB:", e));
+    },
+    [],
+  );
   const salvarCalib = (c: Calib) => {
     setCalib(c);
     localStorage.setItem(CALIB_KEY, JSON.stringify(c));
@@ -73,33 +89,93 @@ function Index() {
   const addLog = (s: string) =>
     setLog((l) => [`${new Date().toLocaleTimeString()}  ${s}`, ...l].slice(0, 200));
 
+  async function enviar(comando: string) {
+    const writer = writerRef.current;
+    if (!writer) throw new Error("Porta serial não está disponível para escrita.");
+    await writer.write(new TextEncoder().encode(`${comando}\n`));
+  }
+
+  async function enviarComando(comando: string) {
+    try {
+      await enviar(comando);
+      addLog(`Comando enviado: ${comando} (aguardando resposta do Arduino)`);
+    } catch (e) {
+      setErro(`Falha ao enviar comando: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+
   async function conectar() {
+    if (conectando || portRef.current) return;
+    setConectando(true);
     setErro(null);
+    setAtual(null);
+    setControle(null);
+    setProtocolo(false);
+    ultimoProtocoloRef.current = 0;
+    ultimaLeituraRef.current = 0;
+    encerrandoRef.current = false;
+    let port: SerialPortLike | null = null;
+    let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
+    let writer: WritableStreamDefaultWriter<Uint8Array> | null = null;
+    let heartbeat: ReturnType<typeof setInterval> | null = null;
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const port: SerialPortLike = await (navigator as any).serial.requestPort();
+      port = await (navigator as any).serial.requestPort();
+      if (!port) throw new Error("Nenhuma porta serial selecionada.");
       await port.open({ baudRate: 9600 });
       portRef.current = port;
-      setConectado(true);
-      addLog("Conectado (9600 baud)");
-      const decoder = new TextDecoderStream();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      port.readable!.pipeTo(decoder.writable as any).catch(() => {});
-      const reader = decoder.readable.getReader();
+      if (!port.readable || !port.writable) throw new Error("Porta serial sem leitura ou escrita.");
+      reader = port.readable.getReader();
+      writer = port.writable.getWriter();
       readerRef.current = reader;
+      writerRef.current = writer;
+      setConectado(true);
+      setConectando(false);
+      addLog("Conectado (9600 baud)");
+      const inicio = Date.now();
+      const ping = async () => {
+        if (encerrandoRef.current) return;
+        if (Date.now() - (ultimoProtocoloRef.current || inicio) > 10000) {
+          setProtocolo(false);
+          setControle(null);
+        }
+        if (Date.now() - (ultimaLeituraRef.current || inicio) > 6000) setAtual(null);
+        try {
+          await enviar("PING");
+        } catch (e) {
+          setErro(`Falha na comunicação USB: ${e instanceof Error ? e.message : String(e)}`);
+          try {
+            await readerRef.current?.cancel();
+          } catch (cancelError) {
+            console.error("Erro ao interromper leitura USB:", cancelError);
+          }
+        }
+      };
+      heartbeat = setInterval(() => void ping(), 2000);
+      void ping();
+      const decoder = new TextDecoder();
       let buf = "";
       while (true) {
         const { value, done } = await reader.read();
-        if (done) break;
-        buf += value;
+        if (done) {
+          if (!encerrandoRef.current) setErro("A leitura da porta USB foi encerrada.");
+          break;
+        }
+        buf += decoder.decode(value, { stream: true });
         const linhas = buf.split(/\r?\n/);
         buf = linhas.pop() ?? "";
         for (const linha of linhas) {
           if (!linha.trim()) continue;
           const ev = parseLinha(linha);
           if (ev.tipo === "leitura") {
+            ultimaLeituraRef.current = Date.now();
             setAtual(ev.leitura);
             setHist((h) => [...h, ev.leitura].slice(-120));
+          } else if (ev.tipo === "protocolo") {
+            ultimoProtocoloRef.current = Date.now();
+            setProtocolo(true);
+          } else if (ev.tipo === "controle") {
+            setControle(ev.controle);
           } else if (ev.tipo === "ligou") {
             setCiclos((c) => c + 1);
             addLog("💧 Bomba LIGADA");
@@ -110,27 +186,38 @@ function Index() {
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      if (!/No port selected/i.test(msg)) setErro(msg);
+      if (!encerrandoRef.current && !/No port selected/i.test(msg)) setErro(msg);
     } finally {
-      await desconectar(true);
+      encerrandoRef.current = true;
+      if (heartbeat) clearInterval(heartbeat);
+      readerRef.current = null;
+      writerRef.current = null;
+      reader?.releaseLock();
+      writer?.releaseLock();
+      if (portRef.current === port) {
+        try {
+          await port?.close();
+        } catch (e) {
+          setErro(`Falha ao fechar a porta USB: ${e instanceof Error ? e.message : String(e)}`);
+        }
+        portRef.current = null;
+      }
+      setConectado(false);
+      setConectando(false);
+      setProtocolo(false);
+      setControle(null);
+      setAtual(null);
+      if (port) addLog("Conexão encerrada");
     }
   }
 
-  async function desconectar(silencioso = false) {
+  async function desconectar() {
+    encerrandoRef.current = true;
     try {
       await readerRef.current?.cancel();
-    } catch {
-      /* ignore */
+    } catch (e) {
+      setErro(`Falha ao desconectar: ${e instanceof Error ? e.message : String(e)}`);
     }
-    try {
-      await portRef.current?.close();
-    } catch {
-      /* ignore */
-    }
-    readerRef.current = null;
-    if (portRef.current && !silencioso) addLog("Desconectado");
-    portRef.current = null;
-    setConectado(false);
   }
 
   const p1 = nivelPercent(atual?.coleta ?? null, T1.cheio, T1.vazio);
@@ -177,10 +264,10 @@ function Index() {
               ) : (
                 <button
                   onClick={conectar}
-                  disabled={!suportado}
+                  disabled={!suportado || conectando}
                   className="stencil rounded-sm border-2 border-border bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground bezel transition active:translate-y-[3px] active:shadow-none hover:bg-primary/90 disabled:opacity-40"
                 >
-                  Conectar Arduino (USB)
+                  {conectando ? "Conectando..." : "Conectar Arduino (USB)"}
                 </button>
               )}
             </div>
@@ -195,9 +282,59 @@ function Index() {
         )}
         {erro && (
           <div className="mt-6 rounded-sm border-2 border-destructive bg-destructive/15 p-4 text-sm">
-            Erro: {erro}. Feche o Monitor Serial da IDE do Arduino se estiver aberto.
+            Erro: {erro}. Se não conseguir conectar, feche o Monitor Serial da IDE do Arduino.
           </div>
         )}
+
+        <section className="plate mt-6 rounded-sm border-2 border-border p-5 bezel">
+          <h2 className="stencil text-base text-foreground">Controle da bomba</h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {!conectado
+              ? "Conecte o Arduino para enviar comandos."
+              : !protocolo
+                ? "Aguardando resposta do firmware de controle. Carregue a versão atual do programa no Arduino."
+                : `Modo confirmado: ${controle?.modo === "PAUSADO" ? "pausado" : controle ? "automático" : "aguardando estado"}.`}
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {[
+              { comando: "LIGAR", label: "Solicitar ligar" },
+              { comando: "PARAR", label: "Desligar e pausar" },
+              { comando: "AUTOMATICO", label: "Retomar automático" },
+            ].map(({ comando, label }) => (
+              <button
+                key={comando}
+                onClick={() => void enviarComando(comando)}
+                disabled={!conectado || !protocolo || !controle}
+                className="stencil rounded-sm border-2 border-border bg-secondary px-4 py-2 text-sm text-secondary-foreground disabled:opacity-40"
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <p className="mt-3 text-xs text-muted-foreground">
+            Ligar retoma o automático: a bomba só parte após as confirmações e condições de nível e
+            descanso. Parar interrompe a bomba e pausa o automático.
+          </p>
+          <label className="mt-4 flex flex-wrap items-center gap-2 text-sm">
+            Ao perder conexão:
+            <select
+              value={controle?.desconexao ?? ""}
+              disabled={!conectado || !protocolo || !controle}
+              onChange={(e) =>
+                void enviarComando(e.target.value === "PARAR" ? "USB_PARAR" : "USB_AUTO")
+              }
+              className="rounded-sm border-2 border-border bg-background px-2 py-1 disabled:opacity-40"
+            >
+              {!controle && <option value="">Aguardando Arduino</option>}
+              <option value="AUTOMATICO">Continuar automático</option>
+              <option value="PARAR">Parar e aguardar comando</option>
+            </select>
+          </label>
+          <p className="mt-2 text-xs text-muted-foreground">
+            O Arduino detecta a perda após 15 segundos sem sinal; a opção fica salva na placa.
+            Abas em segundo plano podem ter a comunicação suspensa pelo navegador.
+          </p>
+        </section>
 
         <section className="mt-8 grid gap-6 md:grid-cols-[1fr_auto_1fr]">
           <Tanque

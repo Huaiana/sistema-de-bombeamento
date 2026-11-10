@@ -32,7 +32,7 @@ describe("controle serial", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Conectar Arduino (USB)" }));
     await waitFor(() => expect(mensagens).toContain("PING\n"));
-    expect(screen.getByRole("button", { name: "Desligar e pausar" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Desligar e pausar" })).toBeEnabled();
     entrada?.enqueue(
       new TextEncoder().encode("PROTOCOLO: 1\r\nCONTROLE: AUTOMATICO | DESCONEXAO: AUTOMATICO\r\n"),
     );
@@ -53,6 +53,8 @@ describe("controle serial", () => {
     await waitFor(() => expect(screen.getByText("Modo confirmado: pausado.")).toBeInTheDocument());
     fireEvent.click(screen.getByRole("button", { name: "Desconectar" }));
     await waitFor(() => expect(port.close).toHaveBeenCalled());
-    expect(screen.getByRole("button", { name: "Desligar e pausar" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Desligar e pausar" })).toBeEnabled();
+    fireEvent.click(screen.getByRole("button", { name: "Desligar e pausar" }));
+    expect(await screen.findByText(/Arduino não conectado/)).toBeInTheDocument();
   });
 });

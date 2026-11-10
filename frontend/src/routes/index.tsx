@@ -129,8 +129,14 @@ function Index() {
   }
 
   async function enviarComando(comando: string) {
+    if (!writerRef.current) {
+      setErro("Arduino não conectado. Clique em “Conectar Arduino (USB)” antes de enviar comandos");
+      addLog(`Comando ${comando} não enviado: Arduino desconectado`);
+      return;
+    }
     try {
       await enviar(comando);
+      setErro(null);
       addLog(`Comando enviado: ${comando} (aguardando resposta do Arduino)`);
     } catch (e) {
       setErro(`Falha ao enviar comando: ${e instanceof Error ? e.message : String(e)}`);
@@ -373,8 +379,7 @@ function Index() {
                 key={comando}
                 type="button"
                 onClick={() => void enviarComando(comando)}
-                disabled={!conectado || !protocolo || !controle}
-                className="stencil rounded-sm border-2 border-border bg-secondary px-4 py-2 text-sm text-secondary-foreground hover:bg-secondary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40"
+                className="stencil rounded-sm border-2 border-border bg-secondary px-4 py-2 text-sm text-secondary-foreground hover:bg-secondary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
               >
                 {label}
               </button>
@@ -388,11 +393,11 @@ function Index() {
             Ao perder conexão:
             <select
               value={controle?.desconexao ?? ""}
-              disabled={!conectado || !protocolo || !controle}
+              disabled={conectando}
               onChange={(e) =>
                 void enviarComando(e.target.value === "PARAR" ? "USB_PARAR" : "USB_AUTO")
               }
-              className="rounded-sm border-2 border-border bg-background px-2 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-40"
+              className="rounded-sm border-2 border-border bg-background px-2 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
               {!controle && <option value="">Aguardando Arduino</option>}
               <option value="AUTOMATICO">Continuar automático</option>

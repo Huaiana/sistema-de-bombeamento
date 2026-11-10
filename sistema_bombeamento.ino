@@ -28,10 +28,13 @@
 // ------------------------------
 // PINOS
 // ------------------------------
-const int TRIG_TANQUE1 = 2;   // Reservatório de coleta (chuva)
-const int ECHO_TANQUE1 = 3;
-const int TRIG_TANQUE2 = 4;   // Caixa-d'água
-const int ECHO_TANQUE2 = 5;
+const int TRIG_TANQUE1 = 4;   // Reservatório de coleta (chuva)
+const int ECHO_TANQUE1 = 5;
+const int TRIG_TANQUE2 = 2;   // Caixa-d'água
+const int ECHO_TANQUE2 = 3;
+const int LED_VERMELHO = 6;   // Falha de sensor
+const int LED_AZUL     = 7;   // Bomba ligada
+const int BUZZER       = 8;   // Buzzer ativo
 const int RELE_BOMBA   = 10;
 
 // Relé acionado em LOW (igual ao seu código original).
@@ -130,25 +133,36 @@ float medirFiltrado(int trigPin, int echoPin)
 // ======================================================
 // LIGA / DESLIGA
 // ======================================================
+void apitar(unsigned long ms)
+{
+  digitalWrite(BUZZER, HIGH);
+  delay(ms);
+  digitalWrite(BUZZER, LOW);
+}
+
 void ligarBomba()
 {
   digitalWrite(RELE_BOMBA, BOMBA_LIGADA);
+  digitalWrite(LED_AZUL, HIGH);
   estado = BOMBEANDO;
   inicioEstado = millis();
   contadorLigar = 0;
   contadorDesligar = 0;
   Serial.println(">>> BOMBA LIGADA");
+  apitar(100);
 }
 
 void desligarBomba(const char* motivo)
 {
   digitalWrite(RELE_BOMBA, BOMBA_DESLIGADA);
+  digitalWrite(LED_AZUL, LOW);
   estado = DESCANSO;
   inicioEstado = millis();
   contadorLigar = 0;
   contadorDesligar = 0;
   Serial.print(">>> BOMBA DESLIGADA - motivo: ");
   Serial.println(motivo);
+  apitar(300);
 }
 
 void enviarControle()
@@ -262,6 +276,12 @@ void setup()
   pinMode(TRIG_TANQUE2, OUTPUT);
   pinMode(ECHO_TANQUE2, INPUT);
 
+  digitalWrite(LED_VERMELHO, LOW);
+  digitalWrite(LED_AZUL, LOW);
+  digitalWrite(BUZZER, LOW);
+  pinMode(LED_VERMELHO, OUTPUT);
+  pinMode(LED_AZUL, OUTPUT);
+  pinMode(BUZZER, OUTPUT);
   // Desliga o relé ANTES de configurar como saída,
   // para a bomba não dar um "pulso" ao ligar o Arduino
   digitalWrite(RELE_BOMBA, BOMBA_DESLIGADA);
@@ -297,6 +317,7 @@ void loop()
 
   bool d1ok = (d1 > 0);
   bool d2ok = (d2 > 0);
+  digitalWrite(LED_VERMELHO, (d1ok && d2ok) ? LOW : HIGH);
   unsigned long tempoNoEstado = millis() - inicioEstado;
 
   switch (estado)

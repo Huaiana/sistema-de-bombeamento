@@ -15,7 +15,7 @@ void delay(unsigned long ms) { tempoSimulado += ms; }
 void delayMicroseconds(unsigned int) {}
 void pinMode(int, int) {}
 void digitalWrite(int pin, int value) { if (pin == 10) estadoRele = value; }
-long pulseIn(int pin, int, unsigned long) { return pin == 3 ? ecoColeta : ecoCaixa; }
+long pulseIn(int pin, int, unsigned long) { return pin == 5 ? ecoColeta : ecoCaixa; }
 
 #include "../../sistema_bombeamento.ino"
 

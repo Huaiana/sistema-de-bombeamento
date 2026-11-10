@@ -28,11 +28,14 @@ O servidor Vite apenas entrega os arquivos do painel durante o desenvolvimento.
 
 | Ligação | Pino do Arduino Uno |
 |---|---:|
-| TRIG do reservatório de coleta | 2 |
-| ECHO do reservatório de coleta | 3 |
-| TRIG da caixa-d'água | 4 |
-| ECHO da caixa-d'água | 5 |
-| Comando do relé da bomba | 8 |
+| TRIG da caixa-d'água | 2 |
+| ECHO da caixa-d'água | 3 |
+| TRIG do reservatório de coleta | 4 |
+| ECHO do reservatório de coleta | 5 |
+| LED vermelho (falha de sensor) | 6 |
+| LED azul (bomba ligada) | 7 |
+| Buzzer (apito ao ligar/desligar a bomba) | 8 |
+| Comando do relé da bomba | 10 |
 
 O relé está configurado como **ativo em nível baixo**. Confira a compatibilidade
 com o módulo utilizado; o firmware contém as constantes para inverter o nível

@@ -56,6 +56,7 @@ function rotuloPorta(p: SerialPortLike, i: number) {
 function Index() {
   const [portas, setPortas] = useState<SerialPortLike[]>([]);
   const [portaSel, setPortaSel] = useState(NOVA_PORTA);
+  const [retorno, setRetorno] = useState<{ ok: boolean; texto: string } | null>(null);
   const [suportado, setSuportado] = useState(true);
   const [conectado, setConectado] = useState(false);
   const [atual, setAtual] = useState<Leitura | null>(null);
@@ -130,16 +131,21 @@ function Index() {
 
   async function enviarComando(comando: string) {
     if (!writerRef.current) {
-      setErro("Arduino não conectado. Clique em “Conectar Arduino (USB)” antes de enviar comandos");
+      const msg =
+        "Arduino não conectado. Clique em “Conectar Arduino (USB)” antes de enviar comandos.";
+      setRetorno({ ok: false, texto: msg });
       addLog(`Comando ${comando} não enviado: Arduino desconectado`);
       return;
     }
     try {
       await enviar(comando);
       setErro(null);
+      setRetorno({ ok: true, texto: `Comando ${comando} enviado ao Arduino.` });
       addLog(`Comando enviado: ${comando} (aguardando resposta do Arduino)`);
     } catch (e) {
-      setErro(`Falha ao enviar comando: ${e instanceof Error ? e.message : String(e)}`);
+      const msg = `Falha ao enviar comando: ${e instanceof Error ? e.message : String(e)}`;
+      setRetorno({ ok: false, texto: msg });
+      setErro(msg);
     }
   }
 
@@ -379,12 +385,20 @@ function Index() {
                 key={comando}
                 type="button"
                 onClick={() => void enviarComando(comando)}
-                className="stencil rounded-sm border-2 border-border bg-secondary px-4 py-2 text-sm text-secondary-foreground hover:bg-secondary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                className="stencil rounded-sm border-2 border-border bg-secondary px-4 py-2 text-sm text-secondary-foreground transition hover:bg-secondary/80 active:translate-y-[2px] active:bg-primary active:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
               >
                 {label}
               </button>
             ))}
           </div>
+          {retorno && (
+            <p
+              role="alert"
+              className={`mt-3 rounded-sm border-2 p-2 text-sm font-semibold ${retorno.ok ? "border-primary bg-primary/15" : "border-destructive bg-destructive/15"}`}
+            >
+              {retorno.texto}
+            </p>
+          )}
           <p className="mt-3 text-xs text-muted-foreground">
             Ligar retoma o automático: a bomba só parte após as confirmações e condições de nível e
             descanso. Parar interrompe a bomba e pausa o automático.

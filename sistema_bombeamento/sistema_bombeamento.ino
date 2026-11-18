@@ -7,38 +7,21 @@
 // 2 sensores ultrassônicos HC-SR04
 // 1 módulo relé (acionado em LOW)
 // 1 bomba de água 5 V
-//
-// CORREÇÕES EM RELAÇÃO À VERSÃO ANTERIOR:
-//  1) HISTERESE: a bomba liga com o reservatório CHEIO e
-//     só desliga quando ele estiver BAIXO (dois níveis
-//     diferentes). Antes era um único nível, então a bomba
-//     ligava/desligava sem parar perto do limite.
-//  2) FILTRO: cada leitura é a mediana de 5 medições, para
-//     ignorar a água balançando e leituras falsas.
-//  3) CONFIRMAÇÃO: a condição precisa se repetir 3 leituras
-//     seguidas antes de ligar ou desligar a bomba.
-//  4) TEMPO MÍNIMO LIGADA: a bomba fica ligada pelo menos
-//     alguns segundos, dando tempo de a água chegar.
-//  5) DESCANSO: depois de desligar, espera um tempo antes
-//     de poder ligar de novo.
-//  6) SEGURANÇA: tempo máximo ligada (evita a bomba rodar
-//     a seco se algum sensor falhar).
 // ======================================================
 
 // ------------------------------
 // PINOS
 // ------------------------------
-const int TRIG_TANQUE1 = 4;   // Reservatório de coleta (chuva)
-const int ECHO_TANQUE1 = 5;
-const int TRIG_TANQUE2 = 2;   // Caixa-d'água
-const int ECHO_TANQUE2 = 3;
+const int TRIG_TANQUE1 = 2;   // Reservatório de coleta (chuva)
+const int ECHO_TANQUE1 = 3;
+const int TRIG_TANQUE2 = 4;   // Caixa-d'água
+const int ECHO_TANQUE2 = 5;
 const int LED_VERMELHO = 6;   // Falha de sensor
 const int LED_AZUL     = 7;   // Bomba ligada
 const int BUZZER       = 8;   // Buzzer ativo
 const int RELE_BOMBA   = 10;
 
-// Relé acionado em LOW (igual ao seu código original).
-// Se o seu relé for acionado em HIGH, inverta estes dois.
+// Relé acionado em LOW
 const int BOMBA_LIGADA    = LOW;
 const int BOMBA_DESLIGADA = HIGH;
 
@@ -48,12 +31,12 @@ const int BOMBA_DESLIGADA = HIGH;
 // ======================================================
 
 // Reservatório de coleta (Tanque 1)
-const float T1_NIVEL_LIGAR    = 8.0;   // água chegou aqui -> pode bombear
-const float T1_NIVEL_DESLIGAR = 15.0;  // água baixou até aqui -> para
+const float T1_NIVEL_LIGAR    = 4.0;   // água chegou aqui -> pode bombear
+const float T1_NIVEL_DESLIGAR = 10.0;  // água baixou até aqui -> para
 
 // Caixa-d'água (Tanque 2)
-const float T2_NIVEL_CHEIO    = 5.0;   // cheia -> para a bomba
-const float T2_NIVEL_LIBERA   = 8.0;   // baixou até aqui -> pode encher de novo
+const float T2_NIVEL_CHEIO    = 4.0;   // cheia -> para a bomba
+const float T2_NIVEL_LIBERA   = 11.0;   // baixou até aqui -> pode encher de novo
 
 // ======================================================
 // AJUSTE DOS TEMPOS (milissegundos)
@@ -63,7 +46,7 @@ const unsigned long TEMPO_MAX_LIGADA = 60000;  // 60 s no máximo (segurança)
 const unsigned long TEMPO_DESCANSO   = 10000;  // 10 s parada após desligar
 const unsigned long INTERVALO_LEITURA = 300;   // intervalo entre leituras
 
-const int CONFIRMACOES = 3;  // leituras seguidas para confirmar
+const int CONFIRMACOES = 3;   // leituras seguidas para confirmar
 const unsigned long TEMPO_CONEXAO_USB = 15000;
 const byte EEPROM_MARCA = 0xA7;
 const int EEPROM_ENDERECO_MARCA = 0;
@@ -86,7 +69,6 @@ unsigned long ultimoSinalPainel = 0;
 char comandoSerial[24];
 byte tamanhoComando = 0;
 bool comandoExcedeuLimite = false;
-
 
 // ======================================================
 // MEDIÇÃO SIMPLES (retorna -1 se não houver eco)
@@ -122,10 +104,18 @@ float medirFiltrado(int trigPin, int echoPin)
 
   if (n == 0) return -1;  // sensor sem resposta
 
-  // ordena (poucos valores, bubble sort basta)
+  // ordena (bubble sort corrigido)
   for (int i = 0; i < n - 1; i++)
+  {
     for (int j = 0; j < n - 1 - i; j++)
-      if (v[j] > v[j + 1]) { float t = v[j]; v[j] = v[j + 1]; v[j + 1] = t; }
+    {
+      if (v[j] > v[j + 1]) { 
+        float t = v[j]; 
+        v[j] = v[j + 1]; 
+        v[j + 1] = t; 
+      }
+    }
+  }
 
   return v[n / 2];
 }
@@ -224,7 +214,7 @@ void processarComando(const char* comando)
 
 void lerComandos()
 {
-  if (painelConectado && millis() - ultimoSinalPainel >= TEMPO_CONEXAO_USB)
+  if (painelConectado && (millis() - ultimoSinalPainel >= TEMPO_CONEXAO_USB))
   {
     painelConectado = false;
     if (pararNaDesconexao)
@@ -256,15 +246,13 @@ void lerComandos()
     }
     else if (!comandoExcedeuLimite)
     {
-      if (tamanhoComando < sizeof(comandoSerial) - 1)
+      if (tamanhoComando < (sizeof(comandoSerial) - 1))
         comandoSerial[tamanhoComando++] = c;
       else
         comandoExcedeuLimite = true;
     }
   }
-
 }
-
 
 // ======================================================
 // CONFIGURAÇÃO
@@ -276,14 +264,15 @@ void setup()
   pinMode(TRIG_TANQUE2, OUTPUT);
   pinMode(ECHO_TANQUE2, INPUT);
 
-  digitalWrite(LED_VERMELHO, LOW);
-  digitalWrite(LED_AZUL, LOW);
-  digitalWrite(BUZZER, LOW);
   pinMode(LED_VERMELHO, OUTPUT);
   pinMode(LED_AZUL, OUTPUT);
   pinMode(BUZZER, OUTPUT);
-  // Desliga o relé ANTES de configurar como saída,
-  // para a bomba não dar um "pulso" ao ligar o Arduino
+  
+  digitalWrite(LED_VERMELHO, LOW);
+  digitalWrite(LED_AZUL, LOW);
+  digitalWrite(BUZZER, LOW);
+  
+  // Desliga o relé ANTES de configurar como saída
   digitalWrite(RELE_BOMBA, BOMBA_DESLIGADA);
   pinMode(RELE_BOMBA, OUTPUT);
 
@@ -301,13 +290,13 @@ void setup()
   inicioEstado = millis();
 }
 
-
 // ======================================================
 // PROGRAMA PRINCIPAL
 // ======================================================
 void loop()
 {
   lerComandos();
+  
   if (millis() - ultimaLeitura < INTERVALO_LEITURA) return;
   ultimaLeitura = millis();
 
@@ -318,15 +307,13 @@ void loop()
   bool d1ok = (d1 > 0);
   bool d2ok = (d2 > 0);
   digitalWrite(LED_VERMELHO, (d1ok && d2ok) ? LOW : HIGH);
+  
   unsigned long tempoNoEstado = millis() - inicioEstado;
 
   switch (estado)
   {
     // --------------------------------------------------
     case AGUARDANDO:
-      // Só liga se o reservatório de coleta estiver CHEIO
-      // e a caixa-d'água tiver espaço de verdade.
-      // Com sensor falhando, não liga.
       if (!controlePausado && d1ok && d2ok &&
           d1 <= T1_NIVEL_LIGAR &&
           d2 >= T2_NIVEL_LIBERA)
@@ -342,14 +329,12 @@ void loop()
 
     // --------------------------------------------------
     case BOMBEANDO:
-      // Segurança: tempo máximo
       if (tempoNoEstado >= TEMPO_MAX_LIGADA)
       {
         desligarBomba("TEMPO MAXIMO (verifique sensores/mangueira)");
         break;
       }
 
-      // Caixa-d'água cheia: para (vale a qualquer momento)
       if (d2ok && d2 <= T2_NIVEL_CHEIO)
       {
         contadorDesligar++;
@@ -358,8 +343,6 @@ void loop()
         break;
       }
 
-      // Reservatório de coleta baixo: para
-      // (só depois do tempo mínimo ligada)
       if (tempoNoEstado >= TEMPO_MIN_LIGADA &&
           d1ok && d1 >= T1_NIVEL_DESLIGAR)
       {

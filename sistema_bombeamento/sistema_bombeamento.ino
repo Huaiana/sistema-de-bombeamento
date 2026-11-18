@@ -32,11 +32,11 @@ const int BOMBA_DESLIGADA = HIGH;
 
 // Reservatório de coleta (Tanque 1)
 const float T1_NIVEL_LIGAR    = 4.0;   // água chegou aqui -> pode bombear
-const float T1_NIVEL_DESLIGAR = 10.0;  // água baixou até aqui -> para
+const float T1_NIVEL_DESLIGAR = 20.0;  // água baixou até aqui -> para
 
 // Caixa-d'água (Tanque 2)
-const float T2_NIVEL_CHEIO    = 4.0;   // cheia -> para a bomba
-const float T2_NIVEL_LIBERA   = 11.0;   // baixou até aqui -> pode encher de novo
+const float T2_NIVEL_CHEIO    = 2.0;   // cheia -> para a bomba
+const float T2_NIVEL_LIBERA   = 10.0;   // baixou até aqui -> pode encher de novo
 
 // ======================================================
 // AJUSTE DOS TEMPOS (milissegundos)

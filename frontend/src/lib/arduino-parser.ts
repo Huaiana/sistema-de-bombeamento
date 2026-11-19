@@ -55,16 +55,16 @@ export function parseLinha(linha: string, t = Date.now()): Evento {
   return { tipo: "texto", texto: l };
 }
 
-/** Converte distância (cm) em % de nível: distância menor = mais água. */
+/** Converte distância (cm) em % de nível: distância maior = mais água. */
 export function nivelPercent(dist: number | null, cheio: number, vazio: number): number | null {
   if (dist == null) return null;
-  const p = ((vazio - dist) / (vazio - cheio)) * 100;
+  const p = ((vazio - dist) / (vazio - cheio)) * 100; 
   return Math.max(0, Math.min(100, p));
 }
 
-export const CAPACIDADE_ML = 150;
+export const CAPACIDADE_ML = 100;
 
 /** Volume estimado em ml a partir da porcentagem de nível. */
 export function volumeMl(pct: number | null, capacidade = CAPACIDADE_ML): number | null {
-  return pct == null ? null : Math.round((pct / 100) * capacidade);
+  return pct == null ? null : Math.round((pct / 80) * capacidade);
 }

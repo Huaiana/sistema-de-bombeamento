@@ -14,7 +14,7 @@
 // ------------------------------
 const int TRIG_TANQUE1 = 2;   // Reservatório de coleta (chuva)
 const int ECHO_TANQUE1 = 3;
-const int TRIG_TANQUE2 = 4;   // Caixa-d'água
+const int TRIG_TANQUE2 = 4;   // Caixa-d'água (Apenas monitoramento/LED)
 const int ECHO_TANQUE2 = 5;
 const int LED_VERMELHO = 6;   // Falha de sensor
 const int LED_AZUL     = 7;   // Bomba ligada
@@ -31,17 +31,13 @@ const int BOMBA_DESLIGADA = HIGH;
 // ======================================================
 
 // Reservatório de coleta (Tanque 1)
-const float T1_NIVEL_LIGAR    = 4.0;   // água chegou aqui -> pode bombear
-const float T1_NIVEL_DESLIGAR = 20.0;  // água baixou até aqui -> para
-
-// Caixa-d'água (Tanque 2)
-const float T2_NIVEL_CHEIO    = 2.0;   // cheia -> para a bomba
-const float T2_NIVEL_LIBERA   = 10.0;   // baixou até aqui -> pode encher de novo
+const float T1_NIVEL_LIGAR    = 10.0;   // água chegou aqui ou abaixo -> pode bombear (ex: 3cm)
+const float T1_NIVEL_DESLIGAR = 30.0;  // água baixou até aqui (ficou longe) -> para
 
 // ======================================================
 // AJUSTE DOS TEMPOS (milissegundos)
 // ======================================================
-const unsigned long TEMPO_MIN_LIGADA = 5000;   // 5 s ligada no mínimo
+const unsigned long TEMPO_MIN_LIGADA = 9000;   // 9 s ligada no mínimo
 const unsigned long TEMPO_MAX_LIGADA = 60000;  // 60 s no máximo (segurança)
 const unsigned long TEMPO_DESCANSO   = 10000;  // 10 s parada após desligar
 const unsigned long INTERVALO_LEITURA = 300;   // intervalo entre leituras
@@ -116,7 +112,6 @@ float medirFiltrado(int trigPin, int echoPin)
       }
     }
   }
-
   return v[n / 2];
 }
 
@@ -196,7 +191,7 @@ void processarComando(const char* comando)
   {
     controlePausado = false;
     contadorLigar = 0;
-    Serial.println(F("COMANDO: AUTOMATICO ATIVO; PARTIDA SUJEITA AOS SENSORES E DESCANSO"));
+    Serial.println(F("COMANDO: AUTOMATICO ATIVO; PARTIDA SUJEITA AO TANQUE 1 E DESCANSO"));
   }
   else if (strcmp(comando, "USB_AUTO") == 0 || strcmp(comando, "USB_PARAR") == 0)
   {
@@ -306,6 +301,8 @@ void loop()
 
   bool d1ok = (d1 > 0);
   bool d2ok = (d2 > 0);
+  
+  // LED vermelho acende apenas se houver falha de leitura em algum sensor
   digitalWrite(LED_VERMELHO, (d1ok && d2ok) ? LOW : HIGH);
   
   unsigned long tempoNoEstado = millis() - inicioEstado;
@@ -314,9 +311,8 @@ void loop()
   {
     // --------------------------------------------------
     case AGUARDANDO:
-      if (!controlePausado && d1ok && d2ok &&
-          d1 <= T1_NIVEL_LIGAR &&
-          d2 >= T2_NIVEL_LIBERA)
+      // Depende apenas do Tanque 1 (água de coleta disponível)
+      if (!controlePausado && d1ok && d1 <= T1_NIVEL_LIGAR)
       {
         contadorLigar++;
         if (contadorLigar >= CONFIRMACOES) ligarBomba();
@@ -331,18 +327,11 @@ void loop()
     case BOMBEANDO:
       if (tempoNoEstado >= TEMPO_MAX_LIGADA)
       {
-        desligarBomba("TEMPO MAXIMO (verifique sensores/mangueira)");
+        desligarBomba("TEMPO MAXIMO (segurança)");
         break;
       }
 
-      if (d2ok && d2 <= T2_NIVEL_CHEIO)
-      {
-        contadorDesligar++;
-        if (contadorDesligar >= CONFIRMACOES)
-          desligarBomba("CAIXA-D'AGUA CHEIA");
-        break;
-      }
-
+      // Desliga apenas quando o Tanque 1 esvaziar (atingir o nível de término)
       if (tempoNoEstado >= TEMPO_MIN_LIGADA &&
           d1ok && d1 >= T1_NIVEL_DESLIGAR)
       {
@@ -375,7 +364,7 @@ void loop()
   if (d1ok) { Serial.print(d1, 1); Serial.print(" cm"); }
   else Serial.print("ERRO SENSOR");
 
-  Serial.print(" | Caixa: ");
+  Serial.print(" | Caixa (Monitor): ");
   if (d2ok) { Serial.print(d2, 1); Serial.println(" cm"); }
   else Serial.println("ERRO SENSOR");
 }
